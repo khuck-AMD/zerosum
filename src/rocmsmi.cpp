@@ -34,6 +34,7 @@ namespace zerosum {
 
     std::vector<uint32_t> initialize_rocm_smi(void) {
         uint32_t deviceCount{0};
+	uint32_t d{0}; // for RSMI_CALL support
         RSMI_CALL(rsmi_init(0));
         RSMI_CALL(rsmi_num_monitor_devices(&deviceCount));
         rsmi_version_t version;
@@ -68,17 +69,18 @@ namespace zerosum {
     }
 
     void finalize_rocm_smi(void) {
+	uint32_t d{0}; // for RSMI_CALL support
         RSMI_CALL(rsmi_shut_down());
     }
 
     int ZeroSum::getgpustatus(void) {
         // create a scoped variable to initialize/finalize
         static ScopedRSMI doInit;
-        size_t value;
+        size_t value{0};
         std::vector<std::map<std::string, std::string>> allfields;
 
         // map d to the real device ID - ROCm can see all of them!
-        for (int d : doInit.devices) {
+        for (int32_t d : doInit.devices) {
             std::map<std::string, std::string> fields;
             std::string timerPrefix{"GPU: Device "};
             timerPrefix += std::to_string(d) + " ";
@@ -92,11 +94,11 @@ namespace zerosum {
                 */
             float counter_resolution = 0;
             uint64_t timestamp;
+            /*
             RSMI_CALL(rsmi_dev_energy_count_get(d, &value, &counter_resolution, &timestamp));
             fields.insert(std::pair(std::string("Energy Average (J)"),
                 std::to_string((double(value)*counter_resolution)*MICROWATTS)));
             //printf("%f counter_resolution, %lu value\n", counter_resolution, value);
-            /*
             int64_t temperature;
             RSMI_CALL(rsmi_dev_temp_metric_get(d, sensor_index, RSMI_TEMP_CURRENT, &temperature));
             fields.insert(std::pair(std::string("Temperature (C)"),
@@ -108,25 +110,33 @@ namespace zerosum {
 
 
             /* Memory */
+	    value = 0;
             RSMI_CALL(rsmi_dev_memory_total_get(d, RSMI_MEM_TYPE_VRAM, &value));
             fields.insert(std::pair(std::string("Total VRAM Bytes"), std::to_string(value)));
+	    value = 0;
             RSMI_CALL(rsmi_dev_memory_usage_get(d, RSMI_MEM_TYPE_VRAM, &value));
             fields.insert(std::pair(std::string("Used VRAM Bytes"), std::to_string(value)));
+	    value = 0;
             RSMI_CALL(rsmi_dev_memory_total_get(d, RSMI_MEM_TYPE_VIS_VRAM, &value));
             fields.insert(std::pair(std::string("Total Visible VRAM Bytes"), std::to_string(value)));
+	    value = 0;
             RSMI_CALL(rsmi_dev_memory_usage_get(d, RSMI_MEM_TYPE_VIS_VRAM, &value));
             fields.insert(std::pair(std::string("Used Visible VRAM Bytes"), std::to_string(value)));
+	    value = 0;
             RSMI_CALL(rsmi_dev_memory_total_get(d, RSMI_MEM_TYPE_GTT, &value));
             fields.insert(std::pair(std::string("Total GTT Bytes"), std::to_string(value)));
+	    value = 0;
             RSMI_CALL(rsmi_dev_memory_usage_get(d, RSMI_MEM_TYPE_GTT, &value));
             fields.insert(std::pair(std::string("Used GTT Bytes"), std::to_string(value)));
 
             /* utilization */
-            uint32_t percent;
+            uint32_t percent{0};
             RSMI_CALL(rsmi_dev_memory_busy_percent_get(d, &percent));
             fields.insert(std::pair(std::string("Memory Busy %"), std::to_string(percent)));
+	    percent = 0;
             RSMI_CALL(rsmi_dev_busy_percent_get (d, &percent));
             fields.insert(std::pair(std::string("Device Busy %"), std::to_string(percent)));
+	    percent = 0;
             rsmi_utilization_counter_t utilization_counters[2];
             utilization_counters[0].type = RSMI_COARSE_GRAIN_GFX_ACTIVITY;
             utilization_counters[1].type = RSMI_COARSE_GRAIN_MEM_ACTIVITY;

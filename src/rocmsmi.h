@@ -29,14 +29,16 @@
 
 #define RSMI_CALL(call)                                                      \
 try {                                                                         \
+    static bool seen{false}; \
     rsmi_status_t _status = call;                                            \
-    if (_status != RSMI_STATUS_SUCCESS) {                                    \
+    if (_status != RSMI_STATUS_SUCCESS && !seen) {                                    \
         const char *errstr;                                                  \
         if (rsmi_status_string(_status, &errstr) == RSMI_STATUS_SUCCESS) {   \
-        fprintf(stderr, "%s:%d: error: function %s failed with error %d: %s.\n", \
-                __FILE__, __LINE__, #call, _status, errstr);                 \
+        fprintf(stderr, "%s:%d: error: device %d function %s failed with error %d: %s.\n", \
+                __FILE__, __LINE__, d, #call, _status, errstr);                 \
         fprintf(stderr, "\nError: ROCm SMI call failed\n");                 \
-        exit(0);                                                                             \
+        /*exit(0);*/                                                                             \
+		seen = true; \
         }                                                                    \
     }                                                                        \
 } catch (const std::system_error& ex) { \
