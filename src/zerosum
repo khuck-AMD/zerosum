@@ -249,6 +249,7 @@ if [ ${#PARAMS} -eq 0 ] ; then
 fi
 
 myrank=0
+mygpu=0
 # Detect our MPI rank!
 if [ ! -z ${PMI_RANK+x} ] ; then
     myrank=${PMI_RANK}
@@ -274,10 +275,13 @@ fi
 if [ ! -z ${PMIX_RANK+x} ] ; then
     myrank=${PMIX_RANK}
 fi
+if [ ! -z ${ROCR_VISIBLE_DEVICES+x} ] ; then
+    mygpu=${ROCR_VISIBLE_DEVICES}
+fi
 
 printf -v myrank_padded "%04g" $myrank
 
-gdbcmds=/tmp/gdbcmds.${myrank}
+gdbcmds=/tmp/gdbcmds.${myrank}.${mygpu}
 rm -f ${gdbcmds}
 
 # Setup all the library paths, and library preloads to support what was requested
@@ -308,7 +312,7 @@ if [ $debug = yes ] ; then
         echo "set height 0" >> ${gdbcmds}
         echo "set logging overwrite on" >> ${gdbcmds}
         echo "set logging redirect on" >> ${gdbcmds}
-        echo "set logging file zsgdb.${myrank_padded}.log" >> ${gdbcmds}
+        echo "set logging file zsgdb.${myrank_padded}.${mygpu}.log" >> ${gdbcmds}
         echo "set logging enabled on" >> ${gdbcmds}
         echo "set amdgpu precise-memory on" >> ${gdbcmds}
         # In case GDB has changed our taskset...
