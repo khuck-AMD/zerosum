@@ -310,6 +310,7 @@ if [ $debug = yes ] ; then
         echo "set logging redirect on" >> ${gdbcmds}
         echo "set logging file zsgdb.${myrank_padded}.log" >> ${gdbcmds}
         echo "set logging enabled on" >> ${gdbcmds}
+        echo "set amdgpu precise-memory on" >> ${gdbcmds}
         # In case GDB has changed our taskset...
         echo "set exec-wrapper taskset -c ${cpulist}" >> ${gdbcmds}
 
@@ -319,6 +320,8 @@ if [ $debug = yes ] ; then
         # If non-zero exit, do the following:
         echo "echo \n\nBacktrace:\n\n" >> ${gdbcmds}
         echo "backtrace" >> ${gdbcmds}
+        echo "echo \n\nLocals:\n\n" >> ${gdbcmds}
+        echo "info locals" >> ${gdbcmds}
         echo "echo \n\nMain thread Backtrace:\n\n" >> ${gdbcmds}
         echo "thread 1" >> ${gdbcmds}
         echo "backtrace" >> ${gdbcmds}
