@@ -348,10 +348,14 @@ if [ $debug = yes ] ; then
         echo "info locals" >> ${gdbcmds}
 	echo "print this" >> ${gdbcmds}
 	echo "print &this->cutneighsq" >> ${gdbcmds}
-	echo "print &this->cutneighsq.data()" >> ${gdbcmds}
+	#echo "print &this->cutneighsq.data()" >> ${gdbcmds}
         echo "echo \n\nMain thread Backtrace:\n\n" >> ${gdbcmds}
         echo "thread 1" >> ${gdbcmds}
         echo "backtrace" >> ${gdbcmds}
+        echo "echo \n\nLocals:\n\n" >> ${gdbcmds}
+        echo "info locals" >> ${gdbcmds}
+	echo "print this" >> ${gdbcmds}
+	echo "print &this->cutneighsq" >> ${gdbcmds}
         #echo "echo \n\nRegisters:\n\n" >> ${gdbcmds}
         #echo "info registers" >> ${gdbcmds}
         #echo "echo \n\nCurrent instructions:\n\n" >> ${gdbcmds}
