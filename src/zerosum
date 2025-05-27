@@ -70,6 +70,8 @@ where ZS options are zero or more of:
                             (boolean, default: false)
     --zs:debugger <name>    Run in debugger <name>
                             (string, default: gdb)
+    --zs:iterate <value>    Run in debugger <value> iterations until failure (for catching elusive race conditions)
+                            (integer, default: 1)
     --zs:map-cores          Map cores from OS index to Core (requires HWLOC)
                             (boolean, default: false)
     --zs:map-pus            Map cores from OS index to PU (requires HWLOC
@@ -87,6 +89,7 @@ PARAMS=""
 debug=no
 logging=no
 debugger=gdb
+iterations=1
 verbose=no
 
 if [ $# -eq 0 ] ; then
@@ -215,6 +218,17 @@ while (( "$#" )); do
         usage
       fi
       ;;
+    --zs:iterate)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        export iterations=$2
+        debug=yes
+        export ZS_DEBUGGING=1
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        usage
+      fi
+      ;;
     --zs:debug)
       debug=yes
       export ZS_DEBUGGING=1
@@ -318,9 +332,15 @@ if [ $debug = yes ] ; then
         # In case GDB has changed our taskset...
         echo "set exec-wrapper taskset -c ${cpulist}" >> ${gdbcmds}
 
+	# Set up a loop of iterations, default 1 time
+	echo "set \$n = ${iterations}" >> ${gdbcmds}
+	echo "while \$n-- > 0" >> ${gdbcmds}
+	echo "printf \"starting program\n\"" >> ${gdbcmds}
         # Run the executable
         echo "run" >> ${gdbcmds}
 
+        echo "if \$_siginfo" >> ${gdbcmds}
+        echo "printf \"received signal %d, stopping\n\", \$_siginfo.si_signo" >> ${gdbcmds}
         # If non-zero exit, do the following:
         echo "echo \n\nBacktrace:\n\n" >> ${gdbcmds}
         echo "backtrace" >> ${gdbcmds}
@@ -337,6 +357,11 @@ if [ $debug = yes ] ; then
         echo "info threads" >> ${gdbcmds}
         echo "echo \n\nThread Backtrace:\n\n" >> ${gdbcmds}
         echo "thread apply all bt" >> ${gdbcmds}
+        echo "loop_break" >> ${gdbcmds}
+        echo "else" >> ${gdbcmds}
+        echo "echo \n\nProgram Ended.\n\n" >> ${gdbcmds}
+        echo "end" >> ${gdbcmds} # end if
+        echo "end" >> ${gdbcmds} # end while
 
         # exit gdb
         echo "quit" >> ${gdbcmds}
