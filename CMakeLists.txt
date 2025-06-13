@@ -35,7 +35,7 @@ option (ZeroSum_WITH_LM_SENSORS "Enable lm-sensors support" FALSE)
 option (ZeroSum_WITH_MPI "Enable MPI support" TRUE)
 option (ZeroSum_WITH_OPENMP "Enable OpenMP support" TRUE)
 option (ZeroSum_WITH_OMPT "Enable OpenMP Tools support" TRUE)
-option (ZeroSum_WITH_ZEROMQ "Enable ZeroMQ support" TRUE)
+option (ZeroSum_WITH_ZEROMQ "Enable ZeroMQ support" FALSE)
 option (ZeroSum_NPROC "Max number of cores to bind to for tests" 8)
 
 string (REPLACE ":" " " MY_PATH_STR $ENV{PATH})

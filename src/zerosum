@@ -322,6 +322,7 @@ if [ $debug = yes ] ; then
         echo "run" >> ${gdbcmds}
 
         # If non-zero exit, do the following:
+        echo "generate-core-file core.${myrank_padded}.${mygpu}" >> ${gdbcmds}
         echo "echo \n\nBacktrace:\n\n" >> ${gdbcmds}
         echo "backtrace" >> ${gdbcmds}
         echo "echo \n\nLocals:\n\n" >> ${gdbcmds}
@@ -336,7 +337,7 @@ if [ $debug = yes ] ; then
         echo "echo \n\nThreads:\n\n" >> ${gdbcmds}
         echo "info threads" >> ${gdbcmds}
         echo "echo \n\nThread Backtrace:\n\n" >> ${gdbcmds}
-        echo "thread apply all bt" >> ${gdbcmds}
+        #echo "thread apply all bt" >> ${gdbcmds}
 
         # exit gdb
         echo "quit" >> ${gdbcmds}
