@@ -87,14 +87,13 @@ namespace zerosum {
             /* Power, energy, temp, voltage */
             int64_t sensor_index{0};
             /* Power stopped working on Frontier in 5.7.1... */
-            /*
             RSMI_CALL(rsmi_dev_power_ave_get(d, sensor_index, &value));
             fields.insert(std::pair(std::string("Power Average (W)"),
                 std::to_string((double(value))*MICROWATTS)));
-                */
             float counter_resolution = 0;
             uint64_t timestamp;
-            /*
+            /* energy and temperature started acting flaky in version 6(?), but now that we are
+	       handling errors better, we can try to get them regardless of whether it is successful. */
             RSMI_CALL(rsmi_dev_energy_count_get(d, &value, &counter_resolution, &timestamp));
             fields.insert(std::pair(std::string("Energy Average (J)"),
                 std::to_string((double(value)*counter_resolution)*MICROWATTS)));
@@ -106,8 +105,6 @@ namespace zerosum {
             RSMI_CALL(rsmi_dev_volt_metric_get(d, RSMI_VOLT_TYPE_VDDGFX, RSMI_VOLT_CURRENT, &temperature));
             fields.insert(std::pair(std::string("Voltage (mV)"),
                 std::to_string((double(temperature)))));
-                */
-
 
             /* Memory */
 	    value = 0;
