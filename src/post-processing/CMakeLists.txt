@@ -61,8 +61,8 @@ CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/src/post-processing/hwloc-template.html
 CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/src/post-processing/hwloc-template-standalone.html
     ${PROJECT_BINARY_DIR}/etc/zs-hwloc-template-standalone.html @ONLY)
 
-CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/src/post-processing/d3.v3.js
-    ${PROJECT_BINARY_DIR}/etc/d3.v3.js @ONLY)
+CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/src/post-processing/d3.v7.js
+    ${PROJECT_BINARY_DIR}/etc/d3.v7.js @ONLY)
 
 INSTALL(FILES
     ${PROJECT_BINARY_DIR}/bin/zs-hwloc-sunburst.py
@@ -83,7 +83,7 @@ INSTALL(FILES
 INSTALL(FILES
     ${PROJECT_BINARY_DIR}/etc/zs-hwloc-template.html
     ${PROJECT_BINARY_DIR}/etc/zs-hwloc-template-standalone.html
-    ${PROJECT_BINARY_DIR}/etc/d3.v3.js
+    ${PROJECT_BINARY_DIR}/etc/d3.v7.js
     DESTINATION etc
     PERMISSIONS OWNER_WRITE OWNER_READ
     GROUP_READ

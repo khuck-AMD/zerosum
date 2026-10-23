@@ -35,7 +35,7 @@ import re
 import sys
 pd.options.mode.chained_assignment = None  # default='warn'
 template_location = "@CMAKE_INSTALL_PREFIX@/etc/"
-d3_js = template_location + "d3.v3.js"
+d3_js = template_location + "d3.v7.js"
 template = template_location + "zs-hwloc-template.html"
 standalone_template = template_location + "zs-hwloc-template-standalone.html"
 
