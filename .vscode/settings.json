@@ -1,5 +1,0 @@
-{
-    "C_Cpp.default.compilerPath": "/opt/rocm-5.2.0/llvm/bin/amdclang++",
-    "vim.vimrc.path": "/Users/khuck/.vimrc",
-    "cmake.configureOnOpen": true
-}
