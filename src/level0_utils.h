@@ -1,8 +1,10 @@
 /*
  *
  * Copyright (C) 2020 Intel Corporation
- *
+ * Copyright (c) 2026 Advanced Micro Devices, Inc. All rights reserved.
  * SPDX-License-Identifier: MIT
+ * See LICENSE in the project root for license information.
+ *
  *
  */
 #pragma once

@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Advanced Micro Devices, Inc. All rights reserved.
+// SPDX-License-Identifier: MIT
+// See LICENSE in the project root for license information.
+
 /*
    Utility to extract MPI P2P data from zerosum logs and
    represent them as CSV files that a post-processing script

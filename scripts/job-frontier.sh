@@ -1,4 +1,8 @@
 #!/bin/bash -e
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All rights reserved.
+# SPDX-License-Identifier: MIT
+# See LICENSE in the project root for license information.
+
 #SBATCH -A phy122-ecp
 #SBATCH -J test_xgc
 #SBATCH -t 0:05:00
@@ -8,7 +12,7 @@
 #SBATCH -S 8
 
 # Assumption - this script will reserve 1 core per L3 bank for system activity.
-#module load rocm/5.2.0
+#module load rocm/10.0.0
 cd $HOME/ECP-WDM/ecp-wdm-coe
 source frontier.sh
 cd $HOME/src/zerosum
@@ -18,9 +22,10 @@ unset OMP_PLACES
 unset OMP_NUM_THREADS
 unset OMP_SCHEDULE
 export SLURM_CPU_BIND_VERBOSE=1
+builddir=${ZEROSUM_BUILD_DIR:-./build.10.0.0}
 
 dosrun() {
-    srun -n8 --gpus-per-task=1 --cpus-per-task=14 --gpu-bind=closest ./build.5.2.0/bin/zerosum-mpi ./build.5.2.0/bin/lu-decomp-mpi
+    srun -n8 --gpus-per-task=1 --cpus-per-task=14 --gpu-bind=closest ${builddir}/bin/zerosum-mpi ${builddir}/bin/lu-decomp-mpi
 }
 
 echo "Defaults"

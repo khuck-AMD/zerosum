@@ -2,6 +2,9 @@
  * MIT License
  *
  * Copyright (c) 2023-2025 University of Oregon, Kevin Huck
+ * Copyright (c) 2026 Advanced Micro Devices, Inc. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ * See LICENSE in the project root for license information.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal

@@ -1,6 +1,9 @@
 # MIT License
 #
 # Copyright (c) 2023-2025 University of Oregon, Kevin Huck
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All rights reserved.
+# SPDX-License-Identifier: MIT
+# See LICENSE in the project root for license information.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,8 +25,7 @@
 
 set(ZS_LIBNAME "libzerosum")
 set(ZS_USE_MPI "no")
-CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/src/zerosum
-    ${PROJECT_BINARY_DIR}/bin/zerosum @ONLY)
+set(ZS_USE_HIP "no")
 
 set(python_scripts
     ctx.py
@@ -45,10 +47,15 @@ endforeach()
 if (ZeroSum_WITH_MPI)
     set(ZS_LIBNAME "libzerosum-mpi")
     set(ZS_USE_MPI "yes")
+    if (ZeroSum_WITH_HIP)
+        set(ZS_USE_HIP "yes")
+    endif ()
     CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/src/zerosum
         ${PROJECT_BINARY_DIR}/bin/zerosum-mpi @ONLY)
-    unset(ZS_LIBNAME)
-    unset(ZS_USE_MPI)
+    # Restore defaults for the non-MPI launcher script configured below.
+    set(ZS_LIBNAME "libzerosum")
+    set(ZS_USE_MPI "no")
+    set(ZS_USE_HIP "no")
 endif (ZeroSum_WITH_MPI)
 
 if (ZeroSum_STANDALONE)
@@ -64,8 +71,9 @@ endif ()
 set(GPU_SOURCE zerosum_nogpu.cpp)
 if (ZeroSum_WITH_HIP)
     add_definitions(-DUSE_HIP)
-    set(GPU_LIB rocm_smi64 hip::host)
-    set(GPU_SOURCE zerosum_hip.cpp rocmsmi.cpp)
+    set(ZS_USE_HIP "yes")
+    set(GPU_LIB amd_smi::amd_smi hip::host)
+    set(GPU_SOURCE zerosum_hip.cpp amdsmi.cpp)
 endif ()
 
 if (ZeroSum_WITH_CUDA)
@@ -85,6 +93,9 @@ if (ZeroSum_WITH_SYCL)
     endif()
     set(GPU_SOURCE zerosum_sycl.cpp sycl.cpp)
 endif ()
+
+CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/src/zerosum
+    ${PROJECT_BINARY_DIR}/bin/zerosum @ONLY)
 
 if (ZeroSum_WITH_HWLOC)
     set(HWLOC_SOURCE hwloc.cpp)

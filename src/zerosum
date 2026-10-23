@@ -4,6 +4,9 @@
 # MIT License
 #
 # Copyright (c) 2023-2025 University of Oregon, Kevin Huck
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All rights reserved.
+# SPDX-License-Identifier: MIT
+# See LICENSE in the project root for license information.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -77,6 +80,8 @@ where ZS options are zero or more of:
                             (boolean, default: false)
     --zs:add-new-hwt        Add new HWT to set of allowed cores for process if new
                             threads are allowed to use them (boolean, default: false)
+    ZS_INJECTION_METHOD     Optional environment override for injection mode:
+                            auto (default), rocp_tool_libraries, ld_preload, both
     "
     echo "${message}"
     exit 1
@@ -295,8 +300,24 @@ fi
 
 PRELOAD=${BASEDIR}/${LIBDIR}/@ZS_LIBNAME@.so
 mpi=@ZS_USE_MPI@
+hip_backend=@ZS_USE_HIP@
+injection_method=${ZS_INJECTION_METHOD:-auto}
+
+if [ "${injection_method}" = "auto" ] ; then
+    if [ "${hip_backend}" = "yes" ] ; then
+        injection_method=rocp_tool_libraries
+    else
+        injection_method=ld_preload
+    fi
+fi
+
 export OMP_TOOL=enabled
 export OMP_TOOL_LIBRARIES=${PRELOAD}
+if [ "${injection_method}" = "rocp_tool_libraries" ] || [ "${injection_method}" = "both" ] ; then
+    export ROCP_TOOL_LIBRARIES=${PRELOAD}
+else
+    unset ROCP_TOOL_LIBRARIES
+fi
 export INTELGT_AUTO_ATTACH_DISABLE=1
 export ZES_ENABLE_SYSMAN=1
 
@@ -305,7 +326,16 @@ cpulist=`cat /proc/self/status | grep Cpus_allowed_list | sed -e 's/^\w*:\ *//' 
 
 if [ $debug = yes ] ; then
     echo "set env LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> ${gdbcmds}
-    echo "set env LD_PRELOAD=${PRELOAD}" >> ${gdbcmds}
+    if [ "${injection_method}" = "ld_preload" ] || [ "${injection_method}" = "both" ] ; then
+        echo "set env LD_PRELOAD=${PRELOAD}" >> ${gdbcmds}
+    else
+        echo "unset env LD_PRELOAD" >> ${gdbcmds}
+    fi
+    if [ "${injection_method}" = "rocp_tool_libraries" ] || [ "${injection_method}" = "both" ] ; then
+        echo "set env ROCP_TOOL_LIBRARIES=${PRELOAD}" >> ${gdbcmds}
+    else
+        echo "unset env ROCP_TOOL_LIBRARIES" >> ${gdbcmds}
+    fi
     if [ $mpi = yes ]; then
         # Set up logging
         echo "set pagination off" >> ${gdbcmds}
@@ -350,9 +380,14 @@ else
         set -x
     fi
     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}
-    export LD_PRELOAD=${PRELOAD}
+    if [ "${injection_method}" = "ld_preload" ] || [ "${injection_method}" = "both" ] ; then
+        export LD_PRELOAD=${PRELOAD}
+    else
+        unset LD_PRELOAD
+    fi
     ${PARAMS}
     unset LD_PRELOAD
+    unset ROCP_TOOL_LIBRARIES
     if [ ${verbose} == yes ] ; then
         set +x
     fi

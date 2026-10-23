@@ -2,6 +2,9 @@
  * MIT License
  *
  * Copyright (c) 2023-2025 University of Oregon, Kevin Huck
+ * Copyright (c) 2026 Advanced Micro Devices, Inc. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ * See LICENSE in the project root for license information.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,12 +40,78 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <mutex>
 #include "zerosum.h"
+#if defined(USE_HIP) && __has_include(<rocprofiler-sdk/registration.h>)
+#include <rocprofiler-sdk/registration.h>
+#define ZEROSUM_HAVE_ROCPROFILER_CONFIGURE 1
+#endif
 
 extern "C" {
+extern char** environ;
 
 // Trampoline for the real main()
 static int (*main_real)(int, char**, char**);
+static bool zerosum_initialized{false};
+static std::mutex zerosum_init_mutex;
+
+static void zerosum_init_once(char** envp) {
+    std::lock_guard<std::mutex> lk(zerosum_init_mutex);
+    if (zerosum_initialized) {
+        return;
+    }
+    if (envp == nullptr) {
+        envp = environ;
+    }
+    zerosum::ZeroSum::getInstance().parseEnv(envp);
+    zerosum::ZeroSum::getInstance();
+    zerosum_initialized = true;
+}
+
+static void zerosum_fini_once(void) {
+    std::lock_guard<std::mutex> lk(zerosum_init_mutex);
+    if (!zerosum_initialized) {
+        return;
+    }
+    zerosum::ZeroSum::getInstance().shutdown();
+    zerosum_initialized = false;
+}
+
+/* ROCm tool entry points for ROCP_TOOL_LIBRARIES loading. */
+void tool_init(void) {
+    zerosum_init_once(nullptr);
+}
+
+void tool_fini(void) {
+    zerosum_fini_once();
+}
+
+#if defined(ZEROSUM_HAVE_ROCPROFILER_CONFIGURE)
+static int zerosum_rocprofiler_init(rocprofiler_client_finalize_t, void*) {
+    zerosum_init_once(nullptr);
+    return 0;
+}
+
+static void zerosum_rocprofiler_fini(void*) {
+    zerosum_fini_once();
+}
+
+rocprofiler_tool_configure_result_t*
+rocprofiler_configure(uint32_t, const char*, uint32_t priority, rocprofiler_client_id_t* client_id) {
+    if (priority > 0) {
+        return nullptr;
+    }
+    if (client_id) {
+        client_id->name = "ZeroSum";
+    }
+    static rocprofiler_tool_configure_result_t cfg{
+        sizeof(rocprofiler_tool_configure_result_t),
+        &zerosum_rocprofiler_init,
+        &zerosum_rocprofiler_fini,
+        nullptr};
+    return &cfg;
+}
+#endif
 
 int zerosum_preload_main(int argc, char** argv, char** envp) {
     // FIRST! check to see if this is a bash script. if so, DO NOTHING
@@ -66,10 +135,10 @@ int zerosum_preload_main(int argc, char** argv, char** envp) {
     _reentry = 1;
 
     int ret{0};
-    zerosum::ZeroSum::getInstance().parseEnv(envp);
+    zerosum_init_once(envp);
     //fputs(argv[0], stderr);
     ret = main_real(argc, argv, envp);
-    zerosum::ZeroSum::getInstance().shutdown();
+    zerosum_fini_once();
     return ret;
 }
 

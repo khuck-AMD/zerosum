@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All rights reserved.
+# SPDX-License-Identifier: MIT
+# See LICENSE in the project root for license information.
+
 cmake_minimum_required (VERSION 3.20.1 FATAL_ERROR)
 project(ompt_5.1_test)
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")

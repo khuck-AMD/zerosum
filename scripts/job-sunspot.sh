@@ -1,4 +1,8 @@
 #!/bin/bash
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All rights reserved.
+# SPDX-License-Identifier: MIT
+# See LICENSE in the project root for license information.
+
 #PBS -A XGC_aesp_CNDA
 ####PBS -q workq
 #PBS -q debug

@@ -1,5 +1,8 @@
 // Author: Wes Kendall
 // Copyright 2011 www.mpitutorial.com
+// Copyright (c) 2026 Advanced Micro Devices, Inc. All rights reserved.
+// SPDX-License-Identifier: MIT
+// See LICENSE in the project root for license information.
 // This code is provided freely with the tutorials on mpitutorial.com. Feel
 // free to modify it for your own use. Any distribution of the code must
 // either provide a link to www.mpitutorial.com or keep this header intact.

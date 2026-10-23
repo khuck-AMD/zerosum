@@ -27,7 +27,7 @@ Inspired by [Tom Pappatheodore's Hello jsrun code for testing layout of Summit r
 ZeroSum will monitor OS threads, OpenMP threads, MPI processes, and the
 hardware assigned to them including CPUs, memory usage and GPU utilization.
 Supported systems include all Linux operating systems, as well as NVIDIA
-(CUDA/NVML), AMD (HIP/ROCm-SMI) and Intel (Intel SYCL) GPUs.  Host side
+(CUDA/NVML), AMD (HIP/AMD-SMI) and Intel (Intel SYCL) GPUs.  Host side
 monitoring happens through the virtual `/proc` filesystem, so should be
 portable to all Linux systems. When integrated with HWLOC, visualizations of
 utilization data can be generated from included Python post-processing scripts.
@@ -54,7 +54,7 @@ cmake --build ${builddir}
 
 For additional support options, add:
 * NVIDIA CUDA (NVML): `-DZeroSum_WITH_CUDA=TRUE` and possibly `-DCUDAToolkit_ROOT=<path to cuda>`
-* AMD HIP (ROCm-SMI): `-DZeroSum_WITH_HIP=TRUE` and possibly `-DROCM_PATH=/opt/rocm-${ROCM_COMPILER_VERSION}`
+* AMD HIP (AMD-SMI): `-DZeroSum_WITH_HIP=TRUE` and set `ROCM_ROOT`/`ROCM_PATH` from your loaded ROCm module (for example `rocm/10.0.0`), then pass `-DROCM_ROOT=${ROCM_ROOT}` if needed.
 * Intel SYCL: `-DZeroSum_WITH_SYCL=TRUE`
 * MPI: `-DZeroSum_WITH_MPI=TRUE`.
 * OpenMP: `-DZeroSum_WITH_OPENMP=TRUE` and with compilers that support it (NVIDIA, AMD, Clang, Intel) `-DZeroSum_WITH_OMPT=TRUE`.
@@ -69,6 +69,8 @@ performance tools like [TAU](https://github.com/UO-OACISS/tau2/) or
 is needed at configuration time. PerfStubs can be disabled with the `-DZeroSum_WITH_PerfStubs=FALSE`
 CMake flag at configuration time (FALSE by default). GPU, HWLOC, MPI, and OpenMP support are also optional but recommended.
 Post-processing scripts require Pandas.
+
+For launcher injection, `src/zerosum` defaults to `ROCP_TOOL_LIBRARIES` when ZeroSum is built with HIP support. For non-HIP builds it defaults to `LD_PRELOAD`. Override with `ZS_INJECTION_METHOD=rocp_tool_libraries|ld_preload|both`.
 
 ## Sample Output
 

@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All rights reserved.
+# SPDX-License-Identifier: MIT
+# See LICENSE in the project root for license information.
+
 # assuming the cudatoolkit module is loaded, CUDATOOLKIT_HOME will be set
 # and CMake will be able to find what it needs.
 

@@ -1,4 +1,7 @@
 # Copyright (c) 2014-2015 John Biddiscombe
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All rights reserved.
+# SPDX-License-Identifier: MIT
+# See LICENSE in the project root for license information.
 # Copyright (c) 2014-2015 Daniel Nachbaur
 # Copyright (c) 2013-2015 Stefan Eileman
 #

@@ -1,5 +1,28 @@
 <!DOCTYPE html>
 <!-- example from http://bl.ocks.org/metmajer/5480307 -->
+<!--
+# MIT License
+#
+# Copyright (c) 2023-2025 University of Oregon, Kevin Huck
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+-->
 
 <meta charset="utf-8">
 <style>
@@ -35,23 +58,24 @@ div.tooltip-donut {
 </p>
 <table>
 <tr>
-<td bgcolor="red">&nbsp;0&nbsp;</td>
-<td bgcolor="blue" style="color: white;">&nbsp;1&nbsp;</td>
-<td bgcolor="lightgreen">&nbsp;2&nbsp;</td>
-<td bgcolor="orange">&nbsp;3&nbsp;</td>
-<td bgcolor="purple" style="color: white;">&nbsp;4&nbsp;</td>
+<td bgcolor="#d62728">&nbsp;0&nbsp;</td>
+<td bgcolor="#1f77b4" style="color: white;">&nbsp;1&nbsp;</td>
+<td bgcolor="#2ca02c" style="color: white;">&nbsp;2&nbsp;</td>
+<td bgcolor="#ff7f0e">&nbsp;3&nbsp;</td>
+<td bgcolor="#9467bd" style="color: white;">&nbsp;4&nbsp;</td>
 <td bgcolor="yellow">&nbsp;5&nbsp;</td>
-<td bgcolor="brown" style="color: white;">&nbsp;6&nbsp;</td>
-<td bgcolor="olive" style="color: white;">&nbsp;7&nbsp;</td>
-<td bgcolor="cyan">&nbsp;8&nbsp;</td>
-<td bgcolor="pink">&nbsp;9&nbsp;</td>
+<td bgcolor="#8c564b" style="color: white;">&nbsp;6&nbsp;</td>
+<td bgcolor="#bcbd22">&nbsp;7&nbsp;</td>
+<td bgcolor="#17becf">&nbsp;8&nbsp;</td>
+<td bgcolor="#e377c2">&nbsp;9&nbsp;</td>
 <td bgcolor="darkgreen" style="color: white;">&nbsp;10&nbsp;</td>
-<td bgcolor="darkgrey">&nbsp;11&nbsp;</td>
+<td bgcolor="#7f7f7f" style="color: white;">&nbsp;11&nbsp;</td>
 </tr>
 </table>
-<script type="module">
-
+<script>
 $SCRIPT_TEXT
+</script>
+<script type="module">
 
 function getWidth() {
   return Math.max(
@@ -84,9 +108,25 @@ var x = d3.scale.linear()
 var y = d3.scale.linear()
     .range([0, radius]);
 //var y = d3.scaleLinear([0, radius]);
+var angleOffset = 0;
 
 function colorChooser(rank) {
-    const mycolors = ["red","blue","lightgreen","orange","purple","yellow","brown","olive","cyan","pink","darkgreen","darkgrey"];
+    //const mycolors = ["red","blue","lightgreen","orange","purple","yellow","brown","olive","cyan","pink","darkgreen","darkgrey"];
+    const mycolors = [
+/* tab:red : */ "#d62728",
+/* tab:blue : */ "#1f77b4",
+/* tab:green : */ "#2ca02c",
+/* tab:orange : */ "#ff7f0e",
+/* tab:purple : */ "#9467bd",
+"yellow",
+/* tab:brown : */ "#8c564b",
+/* tab:olive : */ "#bcbd22",
+/* tab:cyan : */ "#17becf",
+/* tab:pink : */ "#e377c2",
+"darkgreen",
+/* tab:gray : */ "#7f7f7f",
+];
+
     const maxcolors = 12;
     var index = (rank % maxcolors);
     return mycolors[index];
@@ -95,20 +135,24 @@ function colorChooser(rank) {
 
 // Color Scale
 function colorPerVariable(value_in,rank_in) {
-    //var myColor = d3.scale.category20c();
-    var value = 0;
-    var rank = rank_in;
-    if (rank >= 0) {
-        // if this resource is assigned, give it at least 5%
-        value = Math.max(value_in,10.0);
-    } else {
-        value = 0;
-        rank = 0;
+    if (rank_in >= 0) {
+        // Keep rank assignment visually obvious even at low utilization.
+        return colorChooser(rank_in);
     }
-    var myColor = d3.scale.linear()
-        .domain([0, 100])
-        .range(["WhiteSmoke", colorChooser(rank)]);
-    return myColor(value);
+    return "white";
+}
+
+// Opacity Scale
+function opacityPerVariable(value_in, rank_in) {
+    if (rank_in < 0) {
+        return 0.15;
+    }
+    return Math.max(0.3, Math.min(1.0, value_in / 100.0));
+}
+
+// Color Scale
+function whiteOrNot(value,rank) {
+    return "black";
 }
 
 var svg = d3.select("body").append("svg")
@@ -118,11 +162,33 @@ var svg = d3.select("body").append("svg")
     .attr("transform", "translate(" + width / 2 + "," + (height / 2 + 10) + ")");
 
 var partition = d3.layout.partition()
+    .sort(function(a, b) {
+      var aIsCore = (a && a.name === "Core");
+      var bIsCore = (b && b.name === "Core");
+      if (aIsCore !== bIsCore) {
+        return aIsCore ? -1 : 1;
+      }
+
+      var aIsBridge = (a && a.name === "Bridge");
+      var bIsBridge = (b && b.name === "Bridge");
+      if (aIsBridge !== bIsBridge) {
+        return aIsBridge ? 1 : -1;
+      }
+
+      var asi = (typeof a.sort_index === "number") ? a.sort_index : 0;
+      var bsi = (typeof b.sort_index === "number") ? b.sort_index : 0;
+      if (asi !== bsi) {
+        return asi - bsi;
+      }
+      var ao = (typeof a.render_order === "number") ? a.render_order : 0;
+      var bo = (typeof b.render_order === "number") ? b.render_order : 0;
+      return ao - bo;
+    })
     .value(function(d) { return d.size; });
 
 var arc = d3.svg.arc()
-    .startAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x))); })
-    .endAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x + d.dx))); })
+    .startAngle(function(d) { return x(d.x) + angleOffset; })
+    .endAngle(function(d) { return x(d.x + d.dx) + angleOffset; })
     .innerRadius(function(d) { return Math.max(0, y(d.y)); })
     .outerRadius(function(d) { return Math.max(0, y(d.y + d.dy)); });
 
@@ -139,6 +205,8 @@ var myprofile = '$JSONDATA';
   var path = g.append("path")
     .attr("d", arc)
     .style("fill", function(d) { return colorPerVariable(d.utilization,d.rank); })
+    .style("opacity", function(d) { return opacityPerVariable(d.utilization,d.rank); })
+    .style("stroke", "#9a9a9a")
     .on("dblclick", click)
     .on('click', function (d, i) {
           d3.select(this).transition()
@@ -155,24 +223,42 @@ var myprofile = '$JSONDATA';
           div.html(num)
                .style("left", "10px")
                .style("top", "200px");
-     });
-     /*
-     .on('mouseout', function (d, i) {
+     })
+     .on('mouseover', function () {
           d3.select(this).transition()
                .duration('50')
-               .attr('opacity', '1');
-          div.transition()
+               .style("fill",'lightgrey')
+               .style("stroke",'#6f6f6f')
+               .attr('opacity', '.85');
+     })
+     .on('mouseout', function (d) {
+          d3.select(this).transition()
                .duration('50')
-               .style("opacity", 0);
+               .style("fill", function(d) { return colorPerVariable(d.utilization,d.rank); })
+               .style("stroke", "#9a9a9a")
+               .style("opacity", function(d) { return opacityPerVariable(d.utilization,d.rank); });
      });
-     */
 
   var text = g.append("text")
     .attr("transform", function(d) { return "rotate(" + computeTextRotation(d) + ")"; })
+    .attr("fill", function(d) { return whiteOrNot(d.utilization,d.rank); })
     .attr("x", function(d) { return y(d.y); })
     .attr("dx", "6") // margin
+    .attr("text-anchor", "start")
     .attr("dy", ".35em") // vertical-align
-    .text(function(d) { return d.name; });
+    .text(function(d) { return nodeLabel(d); });
+
+  text.each(function(d) {
+    var lines = nodeLabel(d).split('\n');
+    var textNode = d3.select(this);
+    textNode.text(null);
+    var firstDy = ((1 - lines.length) / 2) + "em";
+    lines.forEach(function(line, idx) {
+      textNode.append("tspan")
+        .attr("dy", idx === 0 ? firstDy : "1.0em")
+        .text(line);
+    });
+  });
 
 
   function click(d) {
@@ -211,7 +297,52 @@ function arcTween(d) {
 }
 
 function computeTextRotation(d) {
-  return (x(d.x + d.dx / 2) - Math.PI / 2) / Math.PI * 180;
+  return (x(d.x + d.dx / 2) + angleOffset - Math.PI / 2) / Math.PI * 180;
+}
+
+function detailField(detail, key) {
+  var pattern = new RegExp('(?:^|, )' + key + ':\\s*([^,]+)');
+  var match = detail.match(pattern);
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+  return '';
+}
+
+function truncateLabel(label, maxChars) {
+  if (!label) {
+    return '';
+  }
+  if (label.length <= maxChars) {
+    return label;
+  }
+  return label.slice(0, maxChars - 1) + '…';
+}
+
+function packageLabel(label) {
+  var words = label.trim().split(/\s+/).filter(Boolean);
+  var maxWords = 5;
+  if (words.length > maxWords) {
+    words = words.slice(0, maxWords);
+    words.push('…');
+  }
+  return words.join('\n');
+}
+
+function nodeLabel(d) {
+  if (d.name && d.name.startsWith("Package")) {
+    return "Package";
+  }
+  if (d.name && d.name.startsWith("PCIDev") && d.rank >= 0) {
+    var gpuName = detailField(d.detail_name || "", "Name");
+    if (gpuName.length === 0) {
+      gpuName = detailField(d.detail_name || "", "PCIDevice");
+    }
+    if (gpuName.length > 0) {
+      return truncateLabel(gpuName, 24);
+    }
+  }
+  return truncateLabel(d.name, 24);
 }
 
 </script>

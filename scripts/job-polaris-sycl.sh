@@ -1,4 +1,8 @@
 #!/bin/bash -l
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All rights reserved.
+# SPDX-License-Identifier: MIT
+# See LICENSE in the project root for license information.
+
 #PBS -N zerosum
 #PBS -l select=1:system=polaris
 #PBS -l walltime=0:05:00

@@ -1,6 +1,9 @@
 # MIT License
 #
 # Copyright (c) 2023-2025 University of Oregon, Kevin Huck
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All rights reserved.
+# SPDX-License-Identifier: MIT
+# See LICENSE in the project root for license information.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -57,9 +60,40 @@ add_compile_options(-Wall -Wextra)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
 if (ZeroSum_WITH_HIP)
-    set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH} ${ROCM_ROOT}/lib/cmake")
+    if (NOT DEFINED ROCM_ROOT)
+        if (DEFINED ROCM_PATH)
+            set(ROCM_ROOT "${ROCM_PATH}")
+        elseif (DEFINED ENV{ROCM_PATH})
+            set(ROCM_ROOT "$ENV{ROCM_PATH}")
+        elseif (DEFINED ENV{ROCM_ROOT})
+            set(ROCM_ROOT "$ENV{ROCM_ROOT}")
+        endif()
+    endif()
+
+    if (DEFINED ROCM_ROOT)
+        list(APPEND CMAKE_PREFIX_PATH "${ROCM_ROOT}" "${ROCM_ROOT}/lib/cmake")
+    endif()
+
     find_package(hip REQUIRED)
-    find_package(rocm_smi REQUIRED)
+    find_path(AMDSMI_INCLUDE_DIR
+        NAMES amd_smi/amdsmi.h
+        HINTS ${ROCM_ROOT}
+        PATH_SUFFIXES include)
+    find_library(AMDSMI_LIBRARY
+        NAMES amd_smi libamd_smi
+        HINTS ${ROCM_ROOT}
+        PATH_SUFFIXES lib lib64)
+
+    if (NOT AMDSMI_INCLUDE_DIR OR NOT AMDSMI_LIBRARY)
+        message(FATAL_ERROR "HIP enabled, but AMD SMI was not found. Load rocm/10.0.0 and set ROCM_ROOT or ROCM_PATH.")
+    endif()
+
+    if (NOT TARGET amd_smi::amd_smi)
+        add_library(amd_smi::amd_smi SHARED IMPORTED)
+        set_target_properties(amd_smi::amd_smi PROPERTIES
+            IMPORTED_LOCATION "${AMDSMI_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${AMDSMI_INCLUDE_DIR}")
+    endif()
     add_definitions(-DUSE_HIP)
 endif (ZeroSum_WITH_HIP)
 
@@ -176,7 +210,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # use, i.e. don't skip the full RPATH for the build tree
 SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+# Build binaries/libraries with install RPATH so `cmake --install` does not
+# depend on build-tool-specific relink steps (e.g. CMakeRelink.dir artifacts).
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 LIST(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
@@ -229,26 +265,7 @@ if (ZeroSum_WITH_MPI)
         PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
         GROUP_EXECUTE GROUP_READ
         WORLD_EXECUTE WORLD_READ)
-else (ZeroSum_WITH_MPI)
-    INSTALL(TARGETS zerosum
-        EXPORT ZeroSumTargets
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        INCLUDES DESTINATION include)
-    INSTALL(FILES
-        ${PROJECT_BINARY_DIR}/bin/zerosum
-        DESTINATION bin
-        PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-        GROUP_EXECUTE GROUP_READ
-        WORLD_EXECUTE WORLD_READ)
 endif (ZeroSum_WITH_MPI)
-INSTALL(DIRECTORY ${PROJECT_BINARY_DIR}
-    DESTINATION bin
-    FILES_MATCHING PATTERN "bin/*.py"
-    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-    GROUP_EXECUTE GROUP_READ
-    WORLD_EXECUTE WORLD_READ)
 
 INSTALL(TARGETS zerosum
     EXPORT ZeroSumTargets

@@ -1,5 +1,15 @@
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All rights reserved.
+# SPDX-License-Identifier: MIT
+# See LICENSE in the project root for license information.
+
 #PATH=$PATH:$HOME/src/apex/install_gilgamesh_5.2.0/bin
-export ROCM_COMPILER_VERSION=5.7.1
+export ROCM_COMPILER_VERSION=10.0.0
+export ROCM_ROOT=${ROCM_ROOT:-${ROCM_PATH}}
+export ZEROSUM_HIP_ARCH=${ZEROSUM_HIP_ARCH:-gfx942}
+if [ -z "${ROCM_ROOT}" ] ; then
+    echo "ROCM_ROOT/ROCM_PATH not set. Load rocm/${ROCM_COMPILER_VERSION} first."
+    exit 1
+fi
 module unload darshan-runtime
 
 builddir=`pwd`/build.${ROCM_COMPILER_VERSION}
@@ -14,7 +24,8 @@ cmake -B ${builddir} \
 -DCMAKE_Fortran_COMPILER=amdflang \
 -DCMAKE_BUILD_TYPE=RelWithDebInfo \
 -DCMAKE_INSTALL_PREFIX=${instdir} \
--DROCM_PATH=/opt/rocm-${ROCM_COMPILER_VERSION} \
+-DROCM_ROOT=${ROCM_ROOT} \
+-DCMAKE_HIP_ARCHITECTURES=${ZEROSUM_HIP_ARCH} \
 -DZeroSum_WITH_HIP=TRUE \
 -DZeroSum_WITH_HWLOC=TRUE \
 -DZeroSum_WITH_LM_SENSORS=FALSE \

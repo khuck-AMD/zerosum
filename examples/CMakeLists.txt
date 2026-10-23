@@ -2,6 +2,9 @@
 # MIT License
 #
 # Copyright (c) 2023-2025 University of Oregon, Kevin Huck
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All rights reserved.
+# SPDX-License-Identifier: MIT
+# See LICENSE in the project root for license information.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -171,6 +174,51 @@ if (ZeroSum_WITH_MPI)
         include_directories(${MPI_CXX_COMPILER_INCLUDE_DIRS})
         target_link_libraries (hip-mpi PUBLIC MPI::MPI_CXX)
         target_link_libraries (hip-mpi PRIVATE hip::device)
+
+        add_executable(jacobi-hip-mpi
+            jacobi/JacobiMain.hip
+            jacobi/JacobiRun.hip
+            jacobi/JacobiSetup.hip
+            jacobi/HaloExchange.hip
+            jacobi/Input.hip
+            jacobi/JacobiIteration.hip
+            jacobi/Laplacian.hip
+            jacobi/Norm.hip)
+        target_include_directories(jacobi-hip-mpi PRIVATE jacobi)
+        target_link_libraries(jacobi-hip-mpi PUBLIC MPI::MPI_CXX)
+        target_link_libraries(jacobi-hip-mpi PRIVATE hip::device)
+        add_dependencies(jacobi-hip-mpi zerosum-mpi)
+        add_dependencies(zerosum.tests jacobi-hip-mpi)
+
+        # markers.h depends on ROCm tracing headers/libraries when available.
+        find_path(ROCTRACER_INCLUDE_DIR roctracer_ext.h
+            PATHS
+                ${ROCM_ROOT}/include/roctracer
+                ${ROCM_PATH}/include/roctracer
+                $ENV{CRAY_ROCM_PREFIX}/include/roctracer)
+        if (ROCTRACER_INCLUDE_DIR)
+            target_include_directories(jacobi-hip-mpi PRIVATE ${ROCTRACER_INCLUDE_DIR})
+        endif()
+
+        find_library(ROCTX64_LIB roctx64
+            PATHS
+                ${ROCM_ROOT}/lib
+                ${ROCM_PATH}/lib
+                $ENV{CRAY_ROCM_PREFIX}/lib
+                $ENV{CRAY_ROCM_PREFIX}/lib/roctracer)
+        if (ROCTX64_LIB)
+            target_link_libraries(jacobi-hip-mpi PRIVATE ${ROCTX64_LIB})
+        endif()
+
+        find_library(ROCTRACER64_LIB roctracer64
+            PATHS
+                ${ROCM_ROOT}/lib
+                ${ROCM_PATH}/lib
+                $ENV{CRAY_ROCM_PREFIX}/lib
+                $ENV{CRAY_ROCM_PREFIX}/lib/roctracer)
+        if (ROCTRACER64_LIB)
+            target_link_libraries(jacobi-hip-mpi PRIVATE ${ROCTRACER64_LIB})
+        endif()
     endif (ZeroSum_WITH_HIP)
 
 endif (ZeroSum_WITH_MPI)

@@ -4,6 +4,9 @@
 # MIT License
 #
 # Copyright (c) 2023-2025 University of Oregon, Kevin Huck
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All rights reserved.
+# SPDX-License-Identifier: MIT
+# See LICENSE in the project root for license information.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -73,7 +76,6 @@ def parseHWTData(df):
     hwt_sum = hwt_mean.groupby([c for c in hwt_mean.columns if c not in sum_cols]).sum()
     # Reset indices
     hwt_sum.reset_index(inplace=True)
-    #print(hwt_sum.to_string())
     return hwt_sum,hwt
 
 def parseGPUData(df):
@@ -88,11 +90,8 @@ def parseGPUData(df):
     gpu = gpu_properties.loc[(gpu_properties['resource'] == 'GPU') & (gpu_properties['name'] == 'PCI Address')]
     if gpu.empty:
         gpu = gpu_properties.loc[(gpu_properties['resource'] == 'GPU') & (gpu_properties['name'] == 'Bus ID')]
-    #print(gpu.to_string())
     addresses = {}
-    #print("getting device addresses...",gpu.size,"rows")
     for index, row in gpu.iterrows():
-        #print(row['rank'], row['value'])
         # our key is a tuple of three values, hostname, the MPI rank and the GPU index
         addresses[(row['hostname'],row['rank'],row['index'])] = row['value'].lower()
     # Get the utilization data for each gpu
@@ -110,32 +109,23 @@ def parseGPUData(df):
         scale = 1.0
 
     # Convert the value to a number
-    #print("scaling...",gpu.size,"rows")
     gpu['value'] = pd.to_numeric(gpu['value']) * scale
     # Group by everything except value to get the mean value
     mean_cols = ['value','step']
-    #print("grouping...",gpu.size,"rows")
     gpu_mean = gpu.groupby([c for c in gpu.columns if c not in mean_cols]).mean()
     # Reset indices
     gpu_mean.reset_index(inplace=True)
-    #print(gpu_mean.to_string())
-    #print("getting device utilization...",gpu_mean.size,"rows")
     for index, row in gpu_mean.sort_values(by=['hostname','rank','name']).iterrows():
         subdevice = '0'
         if tiles:
-            p = re.compile('L0 All Engines, subdevice (\d+), Active Time')
+            p = re.compile(r'L0 All Engines, subdevice (\d+), Active Time')
             subdevice = p.findall(row['name'])[0]
-        #print("getting device properties...",gpu_properties.size,"rows")
-        #print("This is the slow bit!")
         gpu_properties2 = gpu_properties.loc[(gpu_properties['rank'] == row['rank']) & (gpu_properties['index'] == row['index'])]
         gpu_properties3 = gpu_properties2.loc[(gpu_properties2['hostname'].str.fullmatch(row['hostname']))]
         properties = {}
-        #print("getting device properties...",gpu_properties3.size,"rows")
         for index2, row2 in gpu_properties3.sort_values(by=['name']).iterrows():
             properties[row2['name']] = row2['value']
-        #print("getting device addresses...",row.size,"rows")
         addresses[(row['hostname'],row['rank'],row['index'])] = list((addresses[(row['hostname'],row['rank'],row['index'])], row['value'], subdevice, properties))
-    #print(addresses)
     return addresses
 
 def traverseHWTTree(tree, in_hostname, df, hwt_all, spinner):
@@ -156,9 +146,13 @@ def traverseHWTTree(tree, in_hostname, df, hwt_all, spinner):
         osindex = tokens[2]
         osindex = int(osindex[2:])
         if osindex in df['index'].values:
-            utilization = df.loc[(df['index'] == osindex) & (df['hostname'] == in_hostname), 'value'].iloc[0]
-            rank = int(df.loc[(df['index'] == osindex) & (df['hostname'] == in_hostname), 'rank'].iloc[0])
-            #print(osindex, utilization)
+            # Multiple ranks may report this HWT index. Attribute the PU to the
+            # rank with highest observed user-time for stable ownership mapping.
+            matches = df.loc[(df['index'] == osindex) & (df['hostname'] == in_hostname)]
+            if not matches.empty:
+                top = matches.loc[matches['value'].idxmax()]
+                utilization = top['value']
+                rank = int(top['rank'])
             """ # Disabled for now - enable when we have time-slider in the hTML template
             # Get all metrics
             metrics = hwt_all['name'].unique().tolist()
@@ -213,11 +207,9 @@ def traverseGPUTree(tree, in_hostname, in_rank, in_index, address, in_utilizatio
             tree['subdevice'] = subdevice
             utilization = in_utilization
             rank = in_rank
-            #print(rank, subdevice, utilization)
     else:
         if 'children' in tree.keys():
             newChildren = []
-            #utilization = 0
             for c in tree['children']:
                 # The child is mutable, so make a copy first
                 oldChild = c.copy()
@@ -225,13 +217,9 @@ def traverseGPUTree(tree, in_hostname, in_rank, in_index, address, in_utilizatio
                 if duplicate:
                     # Keek the old child
                     newChildren.append(oldChild)
-                    #utilization += oldChild['utilization']
                     duplicate = False
-                #utilization += newChild['utilization']
-                #rank = max(rank,newChild['rank'])
                 newChildren.append(newChild)
             tree['children'] = newChildren
-            #utilization = utilization / len(tree['children'])
     tree['utilization'] = utilization;
     tree['rank'] = rank;
     return tree,duplicate
@@ -244,6 +232,81 @@ def simplifyTree(tree):
         tree['name'] = "PU"
     if tree['name'].startswith("Core L#"):
         tree['name'] = "Core"
+    return tree
+
+def _extract_logical_index(name, detail_name):
+    m = re.search(r'L#(\d+)', name or '')
+    if m:
+        return int(m.group(1))
+    m = re.search(r'Logical index:\s*(\d+)', detail_name or '')
+    if m:
+        return int(m.group(1))
+    return 1 << 30
+
+def _extract_bus_id(detail_name):
+    m = re.search(r'bus id:\s*([0-9a-fA-F]{4}):([0-9a-fA-F]{2}):([0-9a-fA-F]{2})\.([0-7])', detail_name or '')
+    if m:
+        domain = int(m.group(1), 16)
+        bus = int(m.group(2), 16)
+        dev = int(m.group(3), 16)
+        fn = int(m.group(4), 16)
+        return (domain << 16) + (bus << 8) + (dev << 3) + fn
+    return 1 << 30
+
+def _min_pu_logical_index(node):
+    name = node.get('name', '')
+    detail = node.get('detail_name', '')
+    if name.startswith("PU L#"):
+        return _extract_logical_index(name, detail)
+    if 'children' not in node.keys() or len(node['children']) == 0:
+        return 1 << 30
+    return min(_min_pu_logical_index(c) for c in node['children'])
+
+def _node_sort_key(node):
+    name = node.get('name', '')
+    detail = node.get('detail_name', '')
+    logical = _extract_logical_index(name, detail)
+    bus = _extract_bus_id(detail)
+    min_pu = _min_pu_logical_index(node)
+
+    # Keep compute hierarchy in logical PU order; sort PCI topology by BDF.
+    if name.startswith("Bridge") or name.startswith("PCIDev"):
+        return (1, bus, logical, name)
+    return (0, min_pu, logical, bus, name)
+
+def _node_sort_index(node, fallback=0):
+    name = node.get('name', '')
+    detail = node.get('detail_name', '')
+    logical = _extract_logical_index(name, detail)
+    if logical < (1 << 30):
+        return logical
+    bus = _extract_bus_id(detail)
+    if bus < (1 << 30):
+        return bus
+    min_pu = _min_pu_logical_index(node)
+    if min_pu < (1 << 30):
+        return min_pu
+    return fallback
+
+def sortTreeChildren(tree):
+    if 'children' in tree.keys():
+        for c in tree['children']:
+            sortTreeChildren(c)
+        tree['children'] = sorted(tree['children'], key=_node_sort_key)
+    return tree
+
+def annotateRenderOrder(tree, fallback=0):
+    tree['sort_index'] = tree.get('sort_index', _node_sort_index(tree, fallback))
+    if 'children' not in tree.keys():
+        return tree
+
+    for idx, child in enumerate(tree['children']):
+        # Preserve sibling order explicitly for D3 partition rendering.
+        child['render_order'] = idx
+        # Provide a sortable index at all levels; fall back to sibling order.
+        child['sort_index'] = _node_sort_index(child, idx)
+        annotateRenderOrder(child, idx)
+
     return tree
 
 def updateTree(hwt_df, hwt_all, gpu_addresses):
@@ -264,6 +327,8 @@ def updateTree(hwt_df, hwt_all, gpu_addresses):
     tree = traverseHWTTree(job, in_hostname, hwt_df, hwt_all, spinner)
     for key,value in gpu_addresses.items():
         tree,modified = traverseGPUTree(tree, key[0], key[1], key[2], value[0], value[1], value[2], value[3])
+    tree = sortTreeChildren(tree)
+    tree = annotateRenderOrder(tree)
     tree = simplifyTree(tree)
     return tree
 
