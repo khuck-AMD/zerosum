@@ -37,6 +37,7 @@ option (ZeroSum_WITH_OPENMP "Enable OpenMP support" TRUE)
 option (ZeroSum_WITH_OMPT "Enable OpenMP Tools support" TRUE)
 option (ZeroSum_WITH_ZEROMQ "Enable ZeroMQ support" FALSE)
 option (ZeroSum_NPROC "Max number of cores to bind to for tests" 8)
+option (ZeroSum_BUILD_EXAMPLES "Build example programs" ON)
 
 string (REPLACE ":" " " MY_PATH_STR $ENV{PATH})
 #set(CMAKE_FIND_DEBUG_MODE ON)
@@ -198,7 +199,9 @@ endif()
 
 add_subdirectory(src)
 add_subdirectory(src/post-processing)
-add_subdirectory(examples)
+if(ZeroSum_BUILD_EXAMPLES)
+        add_subdirectory(examples)
+endif()
 
 function(dump_cmake_variables)
     get_cmake_property(_variableNames VARIABLES)
@@ -225,19 +228,6 @@ if (ZeroSum_WITH_MPI)
     INSTALL(FILES
         ${PROJECT_BINARY_DIR}/bin/zerosum-mpi
         ${PROJECT_BINARY_DIR}/bin/zs_mpi_p2p_merge
-        DESTINATION bin
-        PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-        GROUP_EXECUTE GROUP_READ
-        WORLD_EXECUTE WORLD_READ)
-else (ZeroSum_WITH_MPI)
-    INSTALL(TARGETS zerosum
-        EXPORT ZeroSumTargets
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        INCLUDES DESTINATION include)
-    INSTALL(FILES
-        ${PROJECT_BINARY_DIR}/bin/zerosum
         DESTINATION bin
         PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
         GROUP_EXECUTE GROUP_READ
